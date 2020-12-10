@@ -20,6 +20,7 @@ GLdouble eyex, eyey, eyez;    /* Eye point                */
 GLdouble centerx, centery, centerz; /* Look point               */
 GLdouble dirx, diry, dirz;           /* direction  */
 GLdouble upx, upy, upz;     /* View up vector           */
+int TOGGLE_GRAVITY;
 int current_view;
 int max_age;
 
@@ -50,6 +51,8 @@ typedef struct {
 glob global;
 
 
+void setStandardViewCoordinates();
+
 //This method creates a new particle
 particle *createParticle(double x, double y, double z) {
     particle *p;
@@ -61,10 +64,10 @@ particle *createParticle(double x, double y, double z) {
     p->r = 0.5;
     p->g = 0.5;
     p->b = 0.5;
-    p->dx = (((double) rand() / RAND_MAX) - 0.3) * global.sprayfactor;//direction values
+    p->dx = (((double) rand() / RAND_MAX) - 0.2) * global.sprayfactor;//direction values
     p->dy = (double) rand() / RAND_MAX;
-    p->dz = (((double) rand() / RAND_MAX) - 0.3) * global.sprayfactor;
-    p->speed = 1;//particle speed
+    p->dz = (((double) rand() / RAND_MAX) - 0.2) * global.sprayfactor;
+    p->speed = 0.2;//particle speed
     p->scale = 0.5;//change size if applicable
     p->state = 0;//state for camera or not
     p->transparency = 1.0;
@@ -86,30 +89,23 @@ void throwParticle(double px, double py, double pz) {
         global.tail = newP;
     }
 }
-void calculate_lookpoint(void) { /* Given an eyepoint and latitude and longitude angles, will
-     compute a look point one unit away */
-    dirx = cos(DEG_TO_RAD * lat) * sin(DEG_TO_RAD * lon);
-    diry = sin(DEG_TO_RAD * lat);
-    dirz = cos(DEG_TO_RAD * lat) * cos(DEG_TO_RAD * lon);
-//    centerx = eyex + dirx;
-//    centery = eyey + diry;
-//    centerz = eyez + dirz;
-
-} // calculate_lookpoint()
 
 //Draw the particle at the new location
 void updateParticles(particle *current) {
 
     glColor4f(current->r, current->g, current->b, current->transparency);
-    current->transparency = current->transparency - 0.005;
+    current->transparency = current->transparency - 0.003;
 
     glPushMatrix(); //remember current matrix
     glTranslatef(current->px, current->py, current->pz);
     glBegin(GL_QUADS); /* render something */
     GLUquadric *myQuad;
     GLdouble radius = current->radius;
-    if (radius < 3) {
+    if (radius < 1 ) {
         current->radius = current->radius + 0.1;
+    }
+    if(radius < 4  && current->py > 5){
+        current->radius = current->radius + 0.05;
     }
     GLint slices, stacks;
     myQuad = gluNewQuadric();
@@ -123,13 +119,20 @@ void updateParticles(particle *current) {
 
 //Update particle position
 void updatePositions() {
-    calculate_lookpoint();
     particle *current;
     current = global.head;
     do {
-        current->px += current->speed * current->dx;
-        current->py += current->speed * current->dy;
-        current->pz += current->speed * current->dz;
+        current->px += current->speed * current->radius * current->dx;
+        current->py += current->speed * current->radius * current->dy;
+        current->pz += current->speed * current->radius * current->dz;
+        //earth gravity
+        if(TOGGLE_GRAVITY == 1){
+
+        }
+        //random planet with super intense gravity
+        if(TOGGLE_GRAVITY == 2){
+
+        }
         current = current->next;
     } while (current != 0);
 }
@@ -139,7 +142,7 @@ void changeSpeeds() {
     particle *current;
     current = global.head;
     while (current != 0) {
-        current->speed = current->speed +1;
+        current->speed = current->speed +0.2;
         current = current->next;
     }
 }
@@ -147,9 +150,8 @@ void changeSpeeds() {
 void changeMaxAge() {
     if (max_age == 100) max_age = 500;
     else max_age -= 100;
+    printf("max_age: %d\n", max_age);
 }
-
-
 
 //Remove stationary particles, old particles and particles below screen
 void cleanParticles() {
@@ -159,7 +161,7 @@ void cleanParticles() {
     while (current != 0) {
 
         temp = current->next;
-        if (temp != 0 && (temp->py < -60 || temp->speed == 0 || temp->age > max_age)) {
+        if (temp != 0 && (temp->py < -60 || temp->speed == 0 || temp->age > max_age || temp->transparency < 0.4)) {
             current->next = temp->next;
             if (temp == global.tail) global.tail = current;
             free(temp);
@@ -185,14 +187,11 @@ void reset() {
 }
 
 
-
 void setView(void) {
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
     switch (current_view) {
         case MOVING_VIEW:
-            /* This is for you to complete. */
-//            calculate_lookpoint();
             gluLookAt(eyex, eyey, eyez, centerx, centery, centerz, upx, upy, upz);
             break;
         case STANDARD_VIEW:
@@ -222,7 +221,7 @@ void drawStage(void) {
     //yeet the particles
     if (global.fire){
         throwParticle(0, 1, 0);
-        throwParticle(0, 1, 0);
+//        throwParticle(0, 1, 0);
     }
     if (current != NULL) updatePositions();
     while (current != 0) {
@@ -261,7 +260,12 @@ void keyboard(unsigned char key, int x, int y) {
                 global.sprayfactor = 1;
             else global.sprayfactor = 0.2;
             break;
-// direction keys
+        case 'G':
+        case 'g':
+            if (TOGGLE_GRAVITY == 1)
+                TOGGLE_GRAVITY = 0;
+            else TOGGLE_GRAVITY = 1;
+            break;
         case 's':
         case 'S':
             eyez = eyez + cos(lon * DEG_TO_RAD) * RUN_SPEED;
@@ -280,7 +284,7 @@ void menu(int menuentry) {
             current_view = MOVING_VIEW;
             break;
         case 2:
-            current_view = STANDARD_VIEW;
+            setStandardViewCoordinates();
             break;
         case 3:
             global.fire = 0;
@@ -301,8 +305,12 @@ void init(void) {
     glutAddMenuEntry("Start smoke", 4);
     glutAddMenuEntry("Quit", 5);
     glutAttachMenu(GLUT_RIGHT_BUTTON);
+    setStandardViewCoordinates();
 
-    /* Set initial view parameters */
+    max_age = 300;
+}
+
+void setStandardViewCoordinates() {/* Set initial view parameters */
     eyex = 20.0; /* Set eyepoint at eye height within the scene */
     eyey = 30.0;
     eyez = 70.0;
@@ -316,11 +324,10 @@ void init(void) {
 
 
     current_view = STANDARD_VIEW;
-    max_age = 300;
 }
 
 int main(int argc, char **argv) {
-    printf("Q:Quit\nP:Change speed\nF:Start/stop Stream\nR:Reset\nT:Change spread\n");
+    printf("Q:Quit\nP:Change speed\nF:Start/stop Stream\nR:Reset\nT:Change spread\nA:Change lifetime of particles\nG:Toggle Gravity\n");
     global.sprayfactor = 0.5;
     global.fire = 1;
     glutInit(&argc, argv);
@@ -335,7 +342,7 @@ int main(int argc, char **argv) {
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
-    gluPerspective(50.0, glutGet(GLUT_WINDOW_WIDTH) / glutGet(GLUT_WINDOW_HEIGHT), 1, 200.0);
+    gluPerspective(50.0, glutGet(GLUT_WINDOW_WIDTH*2) / glutGet(GLUT_WINDOW_HEIGHT*2), 1, 200.0);
     glMatrixMode(GL_MODELVIEW);
     glClearColor(0.2, 0.6, 0.6, 0.9);
     glEnable(GL_DEPTH_TEST);
