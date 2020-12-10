@@ -9,11 +9,16 @@
 #include <GL/glut.h>
 #include <math.h>
 #include <windows.h>
+#include <winbase.h>
 
 #define MOVING_VIEW 1
 #define STANDARD_VIEW 2
 #define DEG_TO_RAD 0.01745329
 #define RUN_SPEED 10.0
+#define MASS 0.001
+#define EARTH_GRAVITY 9.8
+#define SCARY_GRAVITY 900.8
+
 
 GLdouble lat, lon;              /* View angles (degrees)    */
 GLdouble eyex, eyey, eyez;    /* Eye point                */
@@ -126,13 +131,11 @@ void updatePositions() {
         current->py += current->speed * current->radius * current->dy;
         current->pz += current->speed * current->radius * current->dz;
         //earth gravity
-        if(TOGGLE_GRAVITY == 1){
-
-        }
+        if(TOGGLE_GRAVITY == 1) current->py = fmax(current->py - MASS * EARTH_GRAVITY,0);
         //random planet with super intense gravity
-        if(TOGGLE_GRAVITY == 2){
+        if(TOGGLE_GRAVITY == 2) current->py = fmax(current->py - MASS * SCARY_GRAVITY,0);
 
-        }
+
         current = current->next;
     } while (current != 0);
 }
@@ -161,7 +164,7 @@ void cleanParticles() {
     while (current != 0) {
 
         temp = current->next;
-        if (temp != 0 && (temp->py < -60 || temp->speed == 0 || temp->age > max_age || temp->transparency < 0.4)) {
+        if (temp != 0 && (temp->age > max_age || temp->transparency < 0.3)) {
             current->next = temp->next;
             if (temp == global.tail) global.tail = current;
             free(temp);
@@ -221,7 +224,7 @@ void drawStage(void) {
     //yeet the particles
     if (global.fire){
         throwParticle(0, 1, 0);
-//        throwParticle(0, 1, 0);
+//        throwParticle(20, 1, 20);
     }
     if (current != NULL) updatePositions();
     while (current != 0) {
@@ -262,9 +265,9 @@ void keyboard(unsigned char key, int x, int y) {
             break;
         case 'G':
         case 'g':
-            if (TOGGLE_GRAVITY == 1)
+            if (TOGGLE_GRAVITY == 2)
                 TOGGLE_GRAVITY = 0;
-            else TOGGLE_GRAVITY = 1;
+            else TOGGLE_GRAVITY += 1;
             break;
         case 's':
         case 'S':
