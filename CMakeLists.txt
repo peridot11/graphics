@@ -3,6 +3,7 @@ project(untitled C)
 
 #set(CMAKE_C_STANDARD 99)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -lGL -lGLU -lglut")
+#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -lGL -lGLU -lglut -glfw - lglfw3 -lopengl32 -lgdi32 -luser32 -lkernel32")
 set(CMAKE_CXX_STANDARD 17)
 
 

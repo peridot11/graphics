@@ -3,13 +3,11 @@
 
 #include <stdlib.h>
 
-
 #include <stdio.h>
-#include <malloc.h>
 #include <GL/glut.h>
 #include <math.h>
-#include <windows.h>
-#include <winbase.h>
+#include <time.h>
+
 
 #define MOVING_VIEW 1
 #define STANDARD_VIEW 2
@@ -20,12 +18,12 @@
 #define SCARY_GRAVITY 900.8
 
 
-GLdouble lat, lon;              /* View angles (degrees)    */
+GLdouble lon;              /* View angles (degrees)    */
 GLdouble eyex, eyey, eyez;    /* Eye point                */
 GLdouble centerx, centery, centerz; /* Look point               */
-GLdouble dirx, diry, dirz;           /* direction  */
 GLdouble upx, upy, upz;     /* View up vector           */
 int TOGGLE_GRAVITY;
+int TOGGLE_MULTIPLE_SOURCES;
 int current_view;
 int max_age;
 
@@ -34,8 +32,7 @@ int max_age;
 typedef struct {
     double px, py, pz;
     double dx, dy, dz;
-    double speed, scale, state;
-    double rx, ry, rz, ra;
+    double speed, scale;
     double r, g, b;
     double radius;
     double transparency;
@@ -74,7 +71,6 @@ particle *createParticle(double x, double y, double z) {
     p->dz = (((double) rand() / RAND_MAX) - 0.2) * global.sprayfactor;
     p->speed = 0.2;//particle speed
     p->scale = 0.5;//change size if applicable
-    p->state = 0;//state for camera or not
     p->transparency = 1.0;
     p->radius = 0.0;
     p->next = 0;
@@ -187,6 +183,8 @@ void reset() {
     global.fire = 1;
     global.sprayfactor = 1;
     global.tail = global.head;
+    TOGGLE_MULTIPLE_SOURCES = 1;
+    TOGGLE_GRAVITY = 0;
 }
 
 
@@ -211,24 +209,36 @@ void drawStage(void) {
     // Draw ground
     glColor3f(0.9f, 0.9f, 0.9f);
     glBegin(GL_QUADS);
-    glVertex3f(30.0f, -2.0f, 30.0f);
-    glVertex3f(-30.0f, -2.0f, 30.0f);
-    glVertex3f(-30.0f, -2.0f, -30.0f);
-    glVertex3f(30.0f, -2.0f, -30.0f);
+    glVertex3f(50.0f, -2.0f, 50.0f);
+    glVertex3f(-50.0f, -2.0f, 50.0f);
+    glVertex3f(-50.0f, -2.0f, -50.0f);
+    glVertex3f(50.0f, -2.0f, -50.0f);
     glEnd();
     //draw origin point
     glColor3f(0.0f, 0.6f, 0.5f);
     glutSolidTeapot(2);
 
     setView();
+
     //yeet the particles
     if (global.fire){
         throwParticle(0, 1, 0);
-//        throwParticle(20, 1, 20);
+        if(TOGGLE_MULTIPLE_SOURCES > 1){
+            throwParticle(30, 1, 30);
+        }
+        if(TOGGLE_MULTIPLE_SOURCES > 2){
+            throwParticle(-30,1, 30);
+        }
+        if(TOGGLE_MULTIPLE_SOURCES > 3){
+            throwParticle(-30,1, -30);
+        }
+        if(TOGGLE_MULTIPLE_SOURCES > 4){
+            throwParticle(30,1, -30);
+        }
     }
     if (current != NULL) updatePositions();
     while (current != 0) {
-        if (current->state != 1 && current != global.head) {
+        if (current != global.head) {
             updateParticles(current);
         }
         current = current->next;
@@ -269,6 +279,12 @@ void keyboard(unsigned char key, int x, int y) {
                 TOGGLE_GRAVITY = 0;
             else TOGGLE_GRAVITY += 1;
             break;
+        case 'M':
+        case 'm':
+            if (TOGGLE_MULTIPLE_SOURCES == 5)
+                TOGGLE_MULTIPLE_SOURCES = 1;
+            else TOGGLE_MULTIPLE_SOURCES += 1;
+            break;
         case 's':
         case 'S':
             eyez = eyez + cos(lon * DEG_TO_RAD) * RUN_SPEED;
@@ -308,6 +324,9 @@ void init(void) {
     glutAddMenuEntry("Start smoke", 4);
     glutAddMenuEntry("Quit", 5);
     glutAttachMenu(GLUT_RIGHT_BUTTON);
+    TOGGLE_MULTIPLE_SOURCES = 1;
+    global.sprayfactor = 1;
+    global.fire = 1;
     setStandardViewCoordinates();
 
     max_age = 300;
@@ -322,7 +341,6 @@ void setStandardViewCoordinates() {/* Set initial view parameters */
     upy = 1.0;
     upz = 0.0;
 
-    lat = 0.0;   /* Look horizontally ...  */
     lon = 0.0;   /* ... along the +Z axis  */
 
 
@@ -331,8 +349,6 @@ void setStandardViewCoordinates() {/* Set initial view parameters */
 
 int main(int argc, char **argv) {
     printf("Q:Quit\nP:Change speed\nF:Start/stop Stream\nR:Reset\nT:Change spread\nA:Change lifetime of particles\nG:Toggle Gravity\n");
-    global.sprayfactor = 0.5;
-    global.fire = 1;
     glutInit(&argc, argv);
     glutInitDisplayMode(GLUT_RGB | GLUT_DOUBLE | GLUT_DEPTH);
     glutInitWindowSize(800, 600);
