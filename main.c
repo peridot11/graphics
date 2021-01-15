@@ -15,13 +15,15 @@
 #define RUN_SPEED 10.0
 #define MASS 0.001
 #define EARTH_GRAVITY 9.8
-#define SCARY_GRAVITY 900.8
+#define SCARY_GRAVITY 980.0
 
 
 GLdouble lon;              /* View angles (degrees)    */
 GLdouble eyex, eyey, eyez;    /* Eye point                */
 GLdouble centerx, centery, centerz; /* Look point               */
 GLdouble upx, upy, upz;     /* View up vector           */
+clock_t current_ticks, delta_ticks;
+clock_t fps = 0;
 int TOGGLE_GRAVITY;
 int TOGGLE_MULTIPLE_SOURCES;
 int current_view;
@@ -45,7 +47,7 @@ typedef struct {
 typedef struct {
     particle *head;
     particle *tail;
-    int fire;
+    int smoke;
     double sprayfactor;
 
 
@@ -163,7 +165,7 @@ void cleanParticles() {
         if (temp != 0 && (temp->age > max_age || temp->transparency < 0.3)) {
             current->next = temp->next;
             if (temp == global.tail) global.tail = current;
-            free(temp);
+//            free(temp);
 
         }
         current = current->next;
@@ -180,11 +182,12 @@ void reset() {
 
         current = current->next;
     }
-    global.fire = 1;
+    global.smoke = 1;
     global.sprayfactor = 1;
     global.tail = global.head;
     TOGGLE_MULTIPLE_SOURCES = 1;
     TOGGLE_GRAVITY = 0;
+    max_age = 300;
 }
 
 
@@ -201,8 +204,16 @@ void setView(void) {
     }
 }
 
+void countFPS() {
+    delta_ticks = clock() - current_ticks; //the time, in ms, that took to render the scene
+    if(delta_ticks > 0)
+        fps = CLOCKS_PER_SEC / delta_ticks;
+    printf("%ld \n", fps);
+}
+
 //Main draw frame loop
 void drawStage(void) {
+    current_ticks = clock();
     particle *current = global.head;
     // Clear Color and Depth Buffers
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -221,7 +232,7 @@ void drawStage(void) {
     setView();
 
     //yeet the particles
-    if (global.fire){
+    if (global.smoke){
         throwParticle(0, 1, 0);
         if(TOGGLE_MULTIPLE_SOURCES > 1){
             throwParticle(30, 1, 30);
@@ -246,6 +257,7 @@ void drawStage(void) {
     cleanParticles();
     glutPostRedisplay();
     glutSwapBuffers();
+    countFPS();
 }
 
 /*glut keyboard function*/
@@ -306,10 +318,10 @@ void menu(int menuentry) {
             setStandardViewCoordinates();
             break;
         case 3:
-            global.fire = 0;
+            global.smoke = 0;
             break;
         case 4:
-            global.fire = 1;
+            global.smoke = 1;
             break;
         case 5:
             exit(0);
@@ -326,7 +338,7 @@ void init(void) {
     glutAttachMenu(GLUT_RIGHT_BUTTON);
     TOGGLE_MULTIPLE_SOURCES = 1;
     global.sprayfactor = 1;
-    global.fire = 1;
+    global.smoke = 1;
     setStandardViewCoordinates();
 
     max_age = 300;
